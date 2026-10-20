@@ -1,0 +1,35 @@
+name: Build Windows App
+
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Download FFmpeg for Windows
+      shell: powershell
+      run: |
+        Invoke-WebRequest -Uri "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip" -OutFile "ffmpeg.zip"
+        Expand-Archive -Path "ffmpeg.zip" -DestinationPath "ffmpeg_extracted"
+        $ffmpegExe = Get-ChildItem -Path "ffmpeg_extracted" -Filter "ffmpeg.exe" -Recurse | Select-Object -First 1
+        Copy-Item $ffmpegExe.FullName -Destination ".\ffmpeg.exe"
+
+    - name: Install PyInstaller & Build EXE
+      run: |
+        pip install pyinstaller
+        pyinstaller --onefile --noconsole --add-binary "ffmpeg.exe;." --name "khaldoze converter" app.py
+
+    - name: Upload Final EXE
+      uses: actions/upload-artifact@v4
+      with:
+        name: khaldoze-converter-Windows-EXE
+        path: "dist/khaldoze converter.exe"
